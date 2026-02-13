@@ -28,25 +28,28 @@ imap:
 smtp:
   host: "smtp.example.com"
   port: 587
-email: "user@example.com"
-password: "app-specific-password"
 
-sender: "sender@example.com"
-recipient: "recipient@example.com"
-send_subject: "Deine PDF-Rechnungen von Apple"
+user: "user@example.com"
+pass: "app-specific-password"
 
-email_count: 10
-filter_subject: "Deine Rechnung von Apple"
-filter_from: "apple.com"
+email:
+  from: "sender@example.com"
+  to: "recipient@example.com"
+  subject: "Deine PDF-Rechnungen von Apple"
+
+filter:
+  count: 10
+  subject: "Deine Rechnung von Apple"
+  from: "apple.com"
 ```
 
 | Field | Description | Default |
 |---|---|---|
-| `email_count` | Number of recent emails to scan | `10` |
-| `filter_subject` | Exact subject line to match | `Deine Rechnung von Apple` |
-| `filter_from` | Sender domain to match | `apple.com` |
-| `sender` | From address for outgoing email | same as `email` |
-| `send_subject` | Subject line for outgoing email | `Deine PDF-Rechnungen von Apple` |
+| `filter.count` | Number of recent emails to scan | `10` |
+| `filter.subject` | Exact subject line to match | `Deine Rechnung von Apple` |
+| `filter.from` | Sender domain to match | `apple.com` |
+| `email.from` | From address for outgoing email | same as `user` |
+| `email.subject` | Subject line for outgoing email | `Deine PDF-Rechnungen von Apple` |
 
 ## Usage
 

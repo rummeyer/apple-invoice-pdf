@@ -1,0 +1,16 @@
+imap:
+  host: "imap.example.com"
+  port: 993
+smtp:
+  host: "smtp.example.com"
+  port: 587
+email: "user@example.com"
+password: "app-specific-password"
+
+sender: "sender@example.com"
+recipient: "recipient@example.com"
+send_subject: "Deine PDF-Rechnungen von Apple"
+
+email_count: 10
+filter_subject: "Deine Rechnung von Apple"
+filter_from: "apple.com"

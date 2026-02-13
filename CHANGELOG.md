@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 - 2026-02-13
+
+### Changed
+- Restructured config to use nested YAML keys (`email.*`, `filter.*`, `user`/`pass`)
+- `filter.count` is now optional — omit or set to 0 to scan all messages
+- Only emails from the current month are matched
+
 ## 1.1.0 - 2026-02-13
 
 ### Changed

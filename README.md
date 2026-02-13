@@ -45,7 +45,7 @@ filter:
 
 | Field | Description | Default |
 |---|---|---|
-| `filter.count` | Number of recent emails to scan | `10` |
+| `filter.count` | Number of recent emails to scan (0 or omit for no limit) | none (all) |
 | `filter.subject` | Exact subject line to match | `Deine Rechnung von Apple` |
 | `filter.from` | Sender domain to match | `apple.com` |
 | `email.from` | From address for outgoing email | same as `user` |
@@ -59,8 +59,8 @@ filter:
 
 The tool will:
 
-1. Connect to the IMAP server and scan the last N emails
-2. Filter by configured subject and sender domain
+1. Connect to the IMAP server and scan the last N emails (or all if count is omitted)
+2. Filter by configured subject, sender domain, and current month
 3. Extract the HTML body and convert each to an A4 PDF
 4. Send all PDFs as attachments in a single email to the configured recipient
 

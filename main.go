@@ -15,6 +15,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/chromedp/cdproto/page"
@@ -36,14 +37,18 @@ type Config struct {
 		Host string `yaml:"host"`
 		Port int    `yaml:"port"`
 	} `yaml:"smtp"`
-	Email         string `yaml:"email"`
-	Password      string `yaml:"password"`
-	Recipient     string `yaml:"recipient"`
-	Sender        string `yaml:"sender"`
-	EmailCount    int    `yaml:"email_count"`
-	FilterSubject string `yaml:"filter_subject"`
-	FilterFrom    string `yaml:"filter_from"`
-	SendSubject   string `yaml:"send_subject"`
+	User  string `yaml:"user"`
+	Pass  string `yaml:"pass"`
+	Email struct {
+		From    string `yaml:"from"`
+		To      string `yaml:"to"`
+		Subject string `yaml:"subject"`
+	} `yaml:"email"`
+	Filter struct {
+		Count   int    `yaml:"count"`
+		Subject string `yaml:"subject"`
+		From    string `yaml:"from"`
+	} `yaml:"filter"`
 }
 
 // InvoiceEmail holds a matched email's subject and HTML content.
@@ -68,31 +73,34 @@ func loadConfig(path string) (*Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parsing config file: %w", err)
 	}
-	if cfg.EmailCount <= 0 {
-		cfg.EmailCount = 10
+	if cfg.Email.From == "" {
+		cfg.Email.From = cfg.User
 	}
-	if cfg.Sender == "" {
-		cfg.Sender = cfg.Email
+	if cfg.Filter.Subject == "" {
+		cfg.Filter.Subject = "Deine Rechnung von Apple"
 	}
-	if cfg.FilterSubject == "" {
-		cfg.FilterSubject = "Deine Rechnung von Apple"
+	if cfg.Filter.From == "" {
+		cfg.Filter.From = "apple.com"
 	}
-	if cfg.FilterFrom == "" {
-		cfg.FilterFrom = "apple.com"
-	}
-	if cfg.SendSubject == "" {
-		cfg.SendSubject = "Deine PDF-Rechnungen von Apple"
+	if cfg.Email.Subject == "" {
+		cfg.Email.Subject = "Deine PDF-Rechnungen von Apple"
 	}
 	return &cfg, nil
 }
 
-// matchesFilter checks if an email envelope matches the configured subject and sender domain.
+// matchesFilter checks if an email envelope matches the configured subject,
+// sender domain, and is from the current month.
 func matchesFilter(env *imap.Envelope, cfg *Config) bool {
-	if env.Subject != cfg.FilterSubject {
+	// Only match emails from the current month
+	now := time.Now()
+	if env.Date.Year() != now.Year() || env.Date.Month() != now.Month() {
+		return false
+	}
+	if env.Subject != cfg.Filter.Subject {
 		return false
 	}
 	for _, addr := range env.From {
-		if strings.Contains(strings.ToLower(addr.HostName), strings.ToLower(cfg.FilterFrom)) {
+		if strings.Contains(strings.ToLower(addr.HostName), strings.ToLower(cfg.Filter.From)) {
 			return true
 		}
 	}
@@ -138,7 +146,7 @@ func fetchInvoices(cfg *Config) ([]InvoiceEmail, error) {
 	}
 	defer c.Logout()
 
-	if err := c.Login(cfg.Email, cfg.Password); err != nil {
+	if err := c.Login(cfg.User, cfg.Pass); err != nil {
 		return nil, fmt.Errorf("IMAP login: %w", err)
 	}
 	log.Println("Logged in to IMAP server")
@@ -153,11 +161,13 @@ func fetchInvoices(cfg *Config) ([]InvoiceEmail, error) {
 		return nil, nil
 	}
 
-	// Build sequence set for last N messages
-	count := uint32(cfg.EmailCount)
+	// Build sequence set: last N messages if count is set, otherwise all
 	from := uint32(1)
-	if mbox.Messages > count {
-		from = mbox.Messages - count + 1
+	if cfg.Filter.Count > 0 {
+		count := uint32(cfg.Filter.Count)
+		if mbox.Messages > count {
+			from = mbox.Messages - count + 1
+		}
 	}
 	seqSet := new(imap.SeqSet)
 	seqSet.AddRange(from, mbox.Messages)
@@ -330,9 +340,9 @@ func sanitizeFilename(s string) string {
 // sendPDFEmail sends a single email with all PDF attachments.
 func sendPDFEmail(cfg *Config, attachments []PDFAttachment) error {
 	m := gomail.NewMessage()
-	m.SetHeader("From", cfg.Sender)
-	m.SetHeader("To", cfg.Recipient)
-	m.SetHeader("Subject", cfg.SendSubject)
+	m.SetHeader("From", cfg.Email.From)
+	m.SetHeader("To", cfg.Email.To)
+	m.SetHeader("Subject", cfg.Email.Subject)
 	m.SetBody("text/plain", "Anbei Deine Rechnungen:\n\n")
 
 	for _, att := range attachments {
@@ -343,7 +353,7 @@ func sendPDFEmail(cfg *Config, attachments []PDFAttachment) error {
 		}))
 	}
 
-	d := gomail.NewDialer(cfg.SMTP.Host, cfg.SMTP.Port, cfg.Email, cfg.Password)
+	d := gomail.NewDialer(cfg.SMTP.Host, cfg.SMTP.Port, cfg.User, cfg.Pass)
 	return d.DialAndSend(m)
 }
 
@@ -399,5 +409,5 @@ func main() {
 	if err := sendPDFEmail(cfg, attachments); err != nil {
 		log.Fatalf("ERROR sending email: %v", err)
 	}
-	log.Printf("Email with %d PDF(s) sent to %s", len(attachments), cfg.Recipient)
+	log.Printf("Email with %d PDF(s) sent to %s", len(attachments), cfg.Email.To)
 }

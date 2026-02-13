@@ -202,6 +202,45 @@ func TestSanitizeFilename(t *testing.T) {
 	}
 }
 
+// --- extractOrderNumber tests ---
+
+func TestExtractOrderNumber(t *testing.T) {
+	tests := []struct {
+		name string
+		html string
+		want string
+	}{
+		{
+			"found in span",
+			`<html><body><span>Bestellnummer: W123456789</span></body></html>`,
+			"W123456789",
+		},
+		{
+			"found in td",
+			`<html><body><table><tr><td>Bestellnummer: MHJT12345</td></tr></table></body></html>`,
+			"MHJT12345",
+		},
+		{
+			"not found",
+			`<html><body><p>No order number here</p></body></html>`,
+			"",
+		},
+		{
+			"with extra whitespace",
+			`<html><body><p>Bestellnummer:   ABC99  </p></body></html>`,
+			"ABC99",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractOrderNumber(tt.html)
+			if got != tt.want {
+				t.Errorf("extractOrderNumber() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 // --- cleanHTML tests ---
 
 func TestCleanHTML_RemovesActionButton(t *testing.T) {

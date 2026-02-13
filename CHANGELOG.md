@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0 - 2026-02-13
+
+### Changed
+- PDF attachment naming now uses `MM_YYYY_Rechnung_Apple_BESTELLNUMMER.pdf` format, with the order number extracted from the invoice HTML
+- Falls back to subject-based naming if no order number is found
+
 ## 1.2.0 - 2026-02-13
 
 ### Changed

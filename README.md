@@ -62,7 +62,8 @@ The tool will:
 1. Connect to the IMAP server and scan the last N emails (or all if count is omitted)
 2. Filter by configured subject, sender domain, and current month
 3. Extract the HTML body and convert each to an A4 PDF
-4. Send all PDFs as attachments in a single email to the configured recipient
+4. Name each PDF as `MM_YYYY_Rechnung_Apple_BESTELLNUMMER.pdf` using the order number from the invoice (falls back to subject-based naming if not found)
+5. Send all PDFs as attachments in a single email to the configured recipient
 
 ## License
 

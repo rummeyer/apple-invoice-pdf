@@ -51,9 +51,10 @@ type Config struct {
 	} `yaml:"filter"`
 }
 
-// InvoiceEmail holds a matched email's subject and HTML content.
+// InvoiceEmail holds a matched email's subject, date, and HTML content.
 type InvoiceEmail struct {
 	Subject  string
+	Date     time.Time
 	HTMLBody string
 }
 
@@ -229,7 +230,7 @@ func fetchBodies(c *client.Client, uids []uint32) ([]InvoiceEmail, error) {
 			log.Printf("WARNING: extracting HTML from UID %d: %v", msg.Uid, err)
 			continue
 		}
-		invoices = append(invoices, InvoiceEmail{Subject: msg.Envelope.Subject, HTMLBody: htmlBody})
+		invoices = append(invoices, InvoiceEmail{Subject: msg.Envelope.Subject, Date: msg.Envelope.Date, HTMLBody: htmlBody})
 	}
 	if err := <-done; err != nil {
 		return nil, fmt.Errorf("fetching bodies: %w", err)
@@ -294,6 +295,30 @@ func cleanHTML(htmlContent string) (string, error) {
 		return "", fmt.Errorf("rendering HTML: %w", err)
 	}
 	return html, nil
+}
+
+// extractOrderNumber parses the invoice HTML for the value following
+// the "Bestellnummer:" label and returns it (trimmed). Returns an empty
+// string if no order number is found.
+func extractOrderNumber(htmlContent string) string {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlContent))
+	if err != nil {
+		return ""
+	}
+	var orderNum string
+	doc.Find("*").EachWithBreak(func(_ int, s *goquery.Selection) bool {
+		text := strings.TrimSpace(s.Text())
+		if strings.HasPrefix(text, "Bestellnummer:") {
+			orderNum = strings.TrimSpace(strings.TrimPrefix(text, "Bestellnummer:"))
+			// Take only the first line/word to avoid capturing trailing content
+			if idx := strings.IndexAny(orderNum, "\n\r\t"); idx >= 0 {
+				orderNum = strings.TrimSpace(orderNum[:idx])
+			}
+			return false
+		}
+		return true
+	})
+	return orderNum
 }
 
 // convertHTMLToPDF renders HTML to an A4 PDF using headless Chrome.
@@ -392,9 +417,17 @@ func main() {
 		}
 		log.Printf("[%d/%d] PDF generated (%d bytes)", i+1, len(invoices), len(pdf))
 
-		filename := sanitizeFilename(inv.Subject)
-		if len(invoices) > 1 {
-			filename = fmt.Sprintf("%s_%d", filename, i+1)
+		orderNum := extractOrderNumber(inv.HTMLBody)
+		log.Printf("[%d/%d] Extracted order number: %q", i+1, len(invoices), orderNum)
+		var filename string
+		if orderNum != "" {
+			filename = fmt.Sprintf("%02d_%04d_Rechnung_Apple_%s",
+				inv.Date.Month(), inv.Date.Year(), sanitizeFilename(orderNum))
+		} else {
+			filename = sanitizeFilename(inv.Subject)
+			if len(invoices) > 1 {
+				filename = fmt.Sprintf("%s_%d", filename, i+1)
+			}
 		}
 		attachments = append(attachments, PDFAttachment{Filename: filename + ".pdf", Data: pdf})
 	}

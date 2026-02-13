@@ -343,7 +343,7 @@ func sendPDFEmail(cfg *Config, attachments []PDFAttachment) error {
 	m.SetHeader("From", cfg.Email.From)
 	m.SetHeader("To", cfg.Email.To)
 	m.SetHeader("Subject", cfg.Email.Subject)
-	m.SetBody("text/plain", "Anbei Deine Rechnungen:\n\n")
+	m.SetBody("text/plain", "Dokumente anbei.\n")
 
 	for _, att := range attachments {
 		data := att.Data
